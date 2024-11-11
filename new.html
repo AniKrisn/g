@@ -1,0 +1,338 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exploration Game</title>
+    <style>
+        body { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+            background-color: #222; 
+        }
+        #game-container { 
+            display: grid; 
+            grid-template-columns: repeat(10, 40px); 
+            gap: 2px;
+            background-color: #241f19;
+            padding: 2px;
+            width: fit-content;
+            height: fit-content;
+        }
+        .tile { 
+            width: 40px; 
+            height: 40px; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            box-sizing: border-box;
+        }
+        .player { 
+            background-color: #fab12f; 
+            outline: 2px solid #fab12f;
+            outline-offset: -2px;
+        }
+        .grass { background-color: #20283d; }
+        .water { background-color: #982b1c; }
+        .tree { background-color: #387478; }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <script>
+        const gridSize = 10;
+        const gameContainer = document.getElementById('game-container');
+        const moveDelay = 120;
+        const noiseScale = 0.2;  // Adjust this to change the noise "zoom level"
+
+        let playerPosition = { x: 0, y: 0 };
+        let currentZone = { x: 0, y: 0 };
+        let lastMoveTime = 0;
+        let keyStates = {};
+        let zones = new Map();
+        let zoneConnections = new Map();
+
+        function getZoneKey(x, y) {
+            return `${x},${y}`;
+        }
+
+        function getExitKey(zoneX, zoneY, side) {
+            return `${zoneX},${zoneY}-${side}`;
+        }
+
+        function getConnectedExit(zoneX, zoneY, side) {
+            const exitKey = getExitKey(zoneX, zoneY, side);
+            return zoneConnections.get(exitKey);
+        }
+
+        function setConnectedExit(zoneX, zoneY, side, positions) {
+            const exitKey = getExitKey(zoneX, zoneY, side);
+            zoneConnections.set(exitKey, positions);
+        }
+
+        function getOpposingSide(side) {
+            const opposites = {
+                'top': 'bottom',
+                'bottom': 'top',
+                'left': 'right',
+                'right': 'left'
+            };
+            return opposites[side];
+        }
+
+        function generateZoneGrid(x, y) {
+            const grid = new Array(gridSize * gridSize).fill('tree');
+            const exits = {
+                top: [],
+                right: [],
+                bottom: [],
+                left: []
+            };
+            
+            function setTile(x, y, type) {
+                if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
+                    grid[y * gridSize + x] = type;
+                }
+            }
+
+            // First determine all exits by checking neighbors
+            const neighborOffsets = {
+                'top': [0, -1],
+                'right': [1, 0],
+                'bottom': [0, 1],
+                'left': [-1, 0]
+            };
+
+            Object.entries(neighborOffsets).forEach(([side, [dx, dy]]) => {
+                const neighborKey = getZoneKey(x + dx, y + dy);
+                const opposingSide = getOpposingSide(side);
+                
+                if (zones.has(neighborKey)) {
+                    const neighborExits = getConnectedExit(x + dx, y + dy, opposingSide);
+                    if (neighborExits) {
+                        exits[side] = [...neighborExits];
+                    }
+                }
+                
+                if (exits[side].length === 0) {
+                    const numExits = 1 + Math.floor(Math.random() * 2);
+                    const possiblePositions = Array.from({length: gridSize - 2}, (_, i) => i + 1);
+                    
+                    for (let i = 0; i < numExits; i++) {
+                        if (possiblePositions.length > 0) {
+                            const randomIndex = Math.floor(Math.random() * possiblePositions.length);
+                            const position = possiblePositions.splice(randomIndex, 1)[0];
+                            exits[side].push(position);
+                        }
+                    }
+                }
+            });
+
+            // Store exits for future connections
+            Object.entries(exits).forEach(([side, positions]) => {
+                setConnectedExit(x, y, side, positions);
+            });
+
+            // Generate base terrain using Perlin noise
+            for (let i = 0; i < gridSize; i++) {
+                for (let j = 0; j < gridSize; j++) {
+                    const noiseVal = noise(
+                        (x * gridSize + i) * noiseScale, 
+                        (y * gridSize + j) * noiseScale
+                    );
+                    
+                    if (noiseVal < 0.3) {
+                        grid[j * gridSize + i] = 'water';
+                    } else if (noiseVal < 0.6) {
+                        grid[j * gridSize + i] = 'grass';
+                    } else {
+                        grid[j * gridSize + i] = 'tree';
+                    }
+                }
+            }
+
+            // Ensure exits are grass and connected
+            function ensurePath(x1, y1, x2, y2) {
+                const dx = Math.sign(x2 - x1);
+                const dy = Math.sign(y2 - y1);
+                let x = x1, y = y1;
+                
+                while (x !== x2 || y !== y2) {
+                    setTile(x, y, 'grass');
+                    if (x !== x2 && Math.random() < 0.7) x += dx;
+                    if (y !== y2 && Math.random() < 0.7) y += dy;
+                    setTile(x, y, 'grass');
+                }
+            }
+
+            // Create and ensure all exit paths
+            exits.left.forEach(y => {
+                setTile(0, y, 'grass');
+                exits.right.forEach(targetY => {
+                    ensurePath(0, y, gridSize - 1, targetY);
+                });
+            });
+
+            exits.right.forEach(y => setTile(gridSize - 1, y, 'grass'));
+
+            exits.top.forEach(x => {
+                setTile(x, 0, 'grass');
+                exits.bottom.forEach(targetX => {
+                    ensurePath(x, 0, targetX, gridSize - 1);
+                });
+            });
+
+            exits.bottom.forEach(x => setTile(x, gridSize - 1, 'grass'));
+
+            // Ensure there's at least some grass around exits for better playability
+            function ensureExitArea(x, y) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        if (x + dx >= 0 && x + dx < gridSize && y + dy >= 0 && y + dy < gridSize) {
+                            if (Math.random() < 0.5) {  // 70% chance for grass around exits
+                                setTile(x + dx, y + dy, 'grass');
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Ensure exit areas are passable
+            exits.left.forEach(y => ensureExitArea(0, y));
+            exits.right.forEach(y => ensureExitArea(gridSize - 1, y));
+            exits.top.forEach(x => ensureExitArea(x, 0));
+            exits.bottom.forEach(x => ensureExitArea(x, gridSize - 1));
+
+            return grid;
+        }
+
+        function getTileType(x, y) {
+            const tile = document.getElementById(`tile-${x}-${y}`);
+            return tile ? tile.classList.contains('grass') : false;
+        }
+
+        function initializeGrid() {
+            gameContainer.innerHTML = '';
+            
+            const zoneKey = getZoneKey(currentZone.x, currentZone.y);
+            let gridData = zones.get(zoneKey);
+            if (!gridData) {
+                gridData = generateZoneGrid(currentZone.x, currentZone.y);
+                zones.set(zoneKey, gridData);
+            }
+
+            gridData.forEach((tileType, index) => {
+                const x = index % gridSize;
+                const y = Math.floor(index / gridSize);
+                const tile = document.createElement('div');
+                tile.classList.add('tile', tileType);
+                tile.id = `tile-${x}-${y}`;
+                gameContainer.appendChild(tile);
+            });
+            
+            updatePlayerPosition();
+        }
+
+        function updatePlayerPosition() {
+            document.querySelectorAll('.player').forEach(tile => tile.classList.remove('player'));
+            const playerTile = document.getElementById(`tile-${playerPosition.x}-${playerPosition.y}`);
+            if (playerTile) playerTile.classList.add('player');
+        }
+
+        function changeZone(dx, dy) {
+            currentZone.x += dx;
+            currentZone.y += dy;
+            
+            const side = dx > 0 ? 'left' : dx < 0 ? 'right' : dy > 0 ? 'top' : 'bottom';
+            const newZoneExits = getConnectedExit(currentZone.x, currentZone.y, side) || [];
+            
+            if (dx !== 0) {
+                playerPosition.x = dx > 0 ? 0 : gridSize - 1;
+                if (newZoneExits.length > 0) {
+                    const closestExit = newZoneExits.reduce((closest, current) => {
+                        return Math.abs(current - playerPosition.y) < Math.abs(closest - playerPosition.y) 
+                            ? current : closest;
+                    }, newZoneExits[0]);
+                    playerPosition.y = closestExit;
+                }
+            } else {
+                playerPosition.y = dy > 0 ? 0 : gridSize - 1;
+                if (newZoneExits.length > 0) {
+                    const closestExit = newZoneExits.reduce((closest, current) => {
+                        return Math.abs(current - playerPosition.x) < Math.abs(closest - playerPosition.x) 
+                            ? current : closest;
+                    }, newZoneExits[0]);
+                    playerPosition.x = closestExit;
+                }
+            }
+
+            initializeGrid();
+        }
+
+        function movePlayer(dx, dy) {
+            const currentTime = Date.now();
+            if (currentTime - lastMoveTime < moveDelay) return;
+
+            const newX = playerPosition.x + dx;
+            const newY = playerPosition.y + dy;
+
+            if (newX >= gridSize) {
+                if (getTileType(gridSize - 1, playerPosition.y)) changeZone(1, 0);
+            } else if (newX < 0) {
+                if (getTileType(0, playerPosition.y)) changeZone(-1, 0);
+            } else if (newY >= gridSize) {
+                if (getTileType(playerPosition.x, gridSize - 1)) changeZone(0, 1);
+            } else if (newY < 0) {
+                if (getTileType(playerPosition.x, 0)) changeZone(0, -1);
+            } else if (getTileType(newX, newY)) {
+                playerPosition.x = newX;
+                playerPosition.y = newY;
+                updatePlayerPosition();
+            }
+
+            lastMoveTime = currentTime;
+        }
+
+        document.addEventListener('keydown', (event) => {
+            keyStates[event.key] = true;
+        });
+
+        document.addEventListener('keyup', (event) => {
+            keyStates[event.key] = false;
+        });
+
+        function checkMovement() {
+            if (keyStates['ArrowUp'] || keyStates['w']) movePlayer(0, -1);
+            if (keyStates['ArrowDown'] || keyStates['s']) movePlayer(0, 1);
+            if (keyStates['ArrowLeft'] || keyStates['a']) movePlayer(-1, 0);
+            if (keyStates['ArrowRight'] || keyStates['d']) movePlayer(1, 0);
+            requestAnimationFrame(checkMovement);
+        }
+
+        function setup() {
+            let initialGrid = generateZoneGrid(0, 0);
+            zones.set(getZoneKey(0, 0), initialGrid);
+            
+            // Find first grass tile for initial position
+            for (let i = 0; i < initialGrid.length; i++) {
+                if (initialGrid[i] === 'grass') {
+                    playerPosition.x = i % gridSize;
+                    playerPosition.y = Math.floor(i / gridSize);
+                    break;
+                }
+            }
+            
+            initializeGrid();
+            checkMovement();
+        }
+
+        setup();
+    </script>
+</body>
+</html>

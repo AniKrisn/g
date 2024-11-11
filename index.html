@@ -48,7 +48,7 @@
         const gridSize = 10;
         const gameContainer = document.getElementById('game-container');
         const noiseScale = 0.2;
-        const moveDelay = 150; 
+        const moveDelay = 125; 
 
         let playerPosition = { x: 0, y: 0 };
         let currentZone = { x: 0, y: 0 };
@@ -112,6 +112,11 @@
             });
             
             updatePlayerPosition();
+        }
+        
+        function getTileType(x, y) {
+            const tile = document.getElementById(`tile-${x}-${y}`);
+            return tile ? tile.classList.contains('grass') : false;
         }
 
         function updatePlayerPosition() {
