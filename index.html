@@ -146,19 +146,19 @@
             const newY = playerPosition.y + dy;
 
             if (newX >= gridSize) {
-                changeZone(1, 0);
+                if (getTileType(gridSize - 1, playerPosition.y)) changeZone(1, 0);
             } else if (newX < 0) {
-                changeZone(-1, 0);
+                if (getTileType(0, playerPosition.y)) changeZone(-1, 0);
             } else if (newY >= gridSize) {
-                changeZone(0, 1);
+                if (getTileType(playerPosition.x, gridSize - 1)) changeZone(0, 1);
             } else if (newY < 0) {
-                changeZone(0, -1);
-            } else {
+                if (getTileType(playerPosition.x, 0)) changeZone(0, -1);
+            } else if (getTileType(newX, newY)) {
                 playerPosition.x = newX;
                 playerPosition.y = newY;
                 updatePlayerPosition();
             }
-
+            
             lastMoveTime = currentTime;
         }
 
