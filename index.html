@@ -135,15 +135,40 @@
             const tile = document.getElementById(`tile-${x}-${y}`);
             return tile ? tile.classList.contains('grass') : false;
         }
-
         function updatePlayerPosition() {
-            document.querySelectorAll('.player').forEach(tile => tile.classList.remove('player'));
-            const playerTile = document.getElementById(`tile-${playerPosition.x}-${playerPosition.y}`);
-            if (playerTile) { 
-                playerTile.classList.add('player');
-                playerTile.textContent = getPlayerSymbol();  
+    document.querySelectorAll('.player').forEach(tile => tile.classList.remove('player'));
+    const playerTile = document.getElementById(`tile-${playerPosition.x}-${playerPosition.y}`);
+
+    if (playerTile) { 
+        playerTile.classList.add('player');
+        playerTile.textContent = getPlayerSymbol();  
+    }
+
+    for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {    
+            const tile = document.getElementById(`tile-${x}-${y}`);  // Get the tile reference
+            let distance = Math.abs(playerPosition.x - x) + Math.abs(playerPosition.y - y);
+
+            if (tile) {  // Check if the tile exists
+                if (distance === 0) {
+                    tile.style.color = '#fab12f';
+                } else if (distance === 1) {
+                    tile.style.color = '#faf6e33d';  // Color for 1 block away
+                    tile.style.opacity = 1;
+                } else if (distance === 2) {
+                    tile.style.color = '#faf6e33d';  // Color for 2 blocks away
+                    tile.style.opacity = 0.6;
+                } else if (distance === 3) {
+                    tile.style.color = '#faf6e33d';  // Color for 3 blocks away
+                    tile.style.opacity = 0.4;
+                } else if (distance > 3) {
+                    tile.textContent = "";  // No text content for tiles further than 3 blocks
+                    tile.style.opacity = 0;
+                }
             }
         }
+    }
+}
 
         function changeZone(dx, dy) {
             currentZone.x += dx;
