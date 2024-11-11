@@ -162,11 +162,14 @@
                 
                 
                 if (distance > 2) {
-                    tile.style.opacity = 0.2;
+                    tile.style.opacity = 0.2;   
                     tile.textContent = "";
                 }
-                if (distance > 4 ) {
+                if (distance > 3 ) {
                     tile.textContent = "";
+                    tile.style.opacity = 0.05;
+                }
+                if (distance > 5) {
                     tile.style.opacity = 0;
                 }
             }
