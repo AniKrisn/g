@@ -29,9 +29,11 @@
             justify-content: center; 
             align-items: center;
             box-sizing: border-box;
+            color: #faf6e33d;
         }
         .player { 
-            background-color: #fab12f; 
+            background-color: #fab12f;
+            color: #fab12f;
             outline: 2px solid #fab12f;
             outline-offset: -2px;
         }
@@ -51,10 +53,25 @@
         const moveDelay = 125; 
 
         let playerPosition = { x: 0, y: 0 };
+        let playerDirection = 'right';
         let currentZone = { x: 0, y: 0 };
         let lastMoveTime = 0;
         let keyStates = {};
         let zones = new Map(); // Store all generated zones
+
+        function getPlayerSymbol() {
+            switch (playerDirection) {
+                case 'up':
+                    return '⮝';
+                case 'down':
+                    return '⮟';
+                case 'left':
+                    return '⮜';
+                case 'right':
+                default:
+                    return '⮞';
+            }
+        }
 
         // Generate a unique key for each zone
         function getZoneKey(x, y) {
@@ -122,7 +139,10 @@
         function updatePlayerPosition() {
             document.querySelectorAll('.player').forEach(tile => tile.classList.remove('player'));
             const playerTile = document.getElementById(`tile-${playerPosition.x}-${playerPosition.y}`);
-            if (playerTile) playerTile.classList.add('player');
+            if (playerTile) { 
+                playerTile.classList.add('player');
+                playerTile.textContent = getPlayerSymbol();  
+            }
         }
 
         function changeZone(dx, dy) {
@@ -144,6 +164,11 @@
 
             const newX = playerPosition.x + dx;
             const newY = playerPosition.y + dy;
+
+            if (dx === 1) playerDirection = 'right';
+            if (dx === -1) playerDirection = 'left';
+            if (dy === 1) playerDirection = 'down';
+            if (dy === -1) playerDirection = 'up';
 
             if (newX >= gridSize) {
                 if (getTileType(gridSize - 1, playerPosition.y)) changeZone(1, 0);
@@ -173,10 +198,10 @@
 
         // Continuous movement check
         function checkMovement() {
-            if (keyStates['ArrowUp'] || keyStates['w']) movePlayer(0, -1);
-            if (keyStates['ArrowDown'] || keyStates['s']) movePlayer(0, 1);
-            if (keyStates['ArrowLeft'] || keyStates['a']) movePlayer(-1, 0);
-            if (keyStates['ArrowRight'] || keyStates['d']) movePlayer(1, 0);
+            if (keyStates['ArrowUp'] || keyStates['w'] || keyStates['W']) movePlayer(0, -1);
+            if (keyStates['ArrowDown'] || keyStates['s'] || keyStates['S']) movePlayer(0, 1);
+            if (keyStates['ArrowLeft'] || keyStates['a'] || keyStates['A']) movePlayer(-1, 0);
+            if (keyStates['ArrowRight'] || keyStates['d'] || keyStates['D']) movePlayer(1, 0);
             
             requestAnimationFrame(checkMovement);
         }
