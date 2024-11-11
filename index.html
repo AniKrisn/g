@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exploration Game</title>
+    <style>
+        body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #222; }
+        #game-container { display: grid; grid-template-columns: repeat(10, 40px); gap: 2px; }
+        .tile { width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; border: 1px solid #241f19; }
+        .player { background-color: #fab12f; border: 2px solid #fab12f; }
+        .grass { background-color: #20283d; }
+        .water { background-color: #982b1c; }
+        .tree { background-color: #387478; }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+
+    <script>
+        const gridSize = 10;
+        const gameContainer = document.getElementById('game-container');
+
+        // Simple 2D map
+        const worldMap = [
+            ['grass', 'grass', 'tree', 'grass', 'water', 'grass', 'grass', 'tree', 'grass', 'grass'],
+            ['grass', 'water', 'grass', 'grass', 'tree', 'grass', 'water', 'grass', 'grass', 'tree'],
+            ['tree', 'grass', 'grass', 'water', 'grass', 'grass', 'tree', 'grass', 'water', 'grass'],
+            ['grass', 'grass', 'tree', 'grass', 'grass', 'water', 'grass', 'tree', 'grass', 'grass'],
+            ['water', 'grass', 'grass', 'tree', 'grass', 'grass', 'grass', 'water', 'tree', 'grass'],
+            ['grass', 'tree', 'grass', 'grass', 'water', 'grass', 'grass', 'grass', 'tree', 'grass'],
+            ['grass', 'grass', 'water', 'grass', 'grass', 'tree', 'grass', 'water', 'grass', 'grass'],
+            ['tree', 'grass', 'grass', 'water', 'grass', 'grass', 'grass', 'grass', 'grass', 'tree'],
+            ['grass', 'water', 'grass', 'grass', 'tree', 'grass', 'grass', 'water', 'grass', 'grass'],
+            ['grass', 'grass', 'tree', 'grass', 'grass', 'water', 'grass', 'grass', 'tree', 'grass']
+        ];
+
+        // Initial player position
+        let playerPosition = { x: 0, y: 0 };
+
+        // Function to initialize the grid
+        function initializeGrid() {
+            for (let y = 0; y < gridSize; y++) {
+                for (let x = 0; x < gridSize; x++) {
+                    const tile = document.createElement('div');
+                    tile.classList.add('tile');
+
+                    // Add the terrain class based on the worldMap
+                    const terrain = worldMap[y][x];
+                    tile.classList.add(terrain);
+
+                    // Assign a unique ID to each tile based on its position
+                    tile.id = `tile-${x}-${y}`;
+
+                    gameContainer.appendChild(tile);
+                }
+            }
+            updatePlayerPosition();
+        }
+
+        // Function to update the player’s position
+        function updatePlayerPosition() {
+            // Clear previous player position
+            document.querySelectorAll('.player').forEach(tile => tile.classList.remove('player'));
+
+            // Set new player position
+            const playerTile = document.getElementById(`tile-${playerPosition.x}-${playerPosition.y}`);
+            if (playerTile) playerTile.classList.add('player');
+        }
+
+        // Function to move player and prevent moving out of bounds
+        function movePlayer(dx, dy) {
+            const newX = playerPosition.x + dx;
+            const newY = playerPosition.y + dy;
+
+            if (newX >= 0 && newX < gridSize && newY >= 0 && newY < gridSize) {
+                playerPosition.x = newX;
+                playerPosition.y = newY;
+                updatePlayerPosition();
+            }
+        }
+
+        // Listen for keyboard events to move the player
+        document.addEventListener('keydown', (event) => {
+            switch (event.key) {
+                case 'ArrowUp': movePlayer(0, -1); break;
+                case 'ArrowDown': movePlayer(0, 1); break;
+                case 'ArrowLeft': movePlayer(-1, 0); break;
+                case 'ArrowRight': movePlayer(1, 0); break;
+                case 'w': movePlayer(0, -1); break;
+                case 's': movePlayer(0, 1); break;
+                case 'a': movePlayer(-1, 0); break;
+                case 'd': movePlayer(1, 0); break;
+            }
+        });
+
+        // Initial grid setup
+        initializeGrid();
+    </script>
+</body>
+</html>
